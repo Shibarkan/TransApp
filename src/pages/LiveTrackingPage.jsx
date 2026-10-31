@@ -1,157 +1,883 @@
-import { useEffect, useState } from 'react'
-import { AlertCircle, BusFront, ExternalLink, LocateFixed, MapPin, Radio, RefreshCw, Wifi, WifiOff } from 'lucide-react'
-import PageHeader from '../components/PageHeader.jsx'
-import VehicleMap from '../components/VehicleMap.jsx'
-import { corridors } from '../data/routes.js'
-import { useUserLocation } from '../hooks/useUserLocation.js'
-import { isSupabaseConfigured } from '../lib/supabase.js'
-import { isVehicleFresh } from '../lib/vehicleFreshness.js'
-import { distanceInMeters } from '../lib/distance.js'
-import { useLiveVehicles } from '../hooks/useLiveVehicles.js'
 
-const statusLabels = {
-  connected: 'Terhubung',
-  connecting: 'Menghubungkan',
-  unconfigured: 'Belum dikonfigurasi',
-  error: 'Koneksi bermasalah',
-  closed: 'Koneksi terputus',
+import { useEffect, useMemo, useState } from 'react'
+import L from 'leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  CircleMarker,
+  Polyline,
+  Popup,
+  useMap,
+} from 'react-leaflet'
+
+import 'leaflet/dist/leaflet.css'
+
+import PageHeader from '../components/PageHeader.jsx'
+import { corridors } from '../data/routes.js'
+import {
+  corridorPaths,
+  transitPoints,
+} from '../data/terminals.js'
+import { useRoadRoutes } from '../hooks/useRoadRoutes.js'
+
+// ==========================================
+// CONFIGURATION
+// ==========================================
+
+const DEFAULT_CENTER = [-8.65, 115.21]
+const BUS_COUNT = 3
+const UPDATE_MS = 180
+
+// Percepatan animasi agar gerakan terlihat
+// ketika aplikasi dipresentasikan.
+const MOVEMENT_FACTOR = 6
+
+const pointById = Object.fromEntries(
+  transitPoints.map((point) => [point.id, point])
+)
+
+// ==========================================
+// BUS ICON
+// ==========================================
+
+const busIcon = L.divIcon({
+  className: 'tmd-live-pin',
+  html: `
+    <div class="tmd-live-bus">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect x="5" y="3" width="14" height="15" rx="3"/>
+        <path d="M5 10h14"/>
+        <path d="M8 18v3M16 18v3"/>
+        <path d="M8 14h.01M16 14h.01"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [42, 42],
+  iconAnchor: [21, 21],
+})
+
+// ==========================================
+// DISTANCE
+// ==========================================
+
+function distanceMeters(a, b) {
+  const toRad = Math.PI / 180
+
+  const lat1 = a[0] * toRad
+  const lat2 = b[0] * toRad
+
+  const dLat = (b[0] - a[0]) * toRad
+  const dLon = (b[1] - a[1]) * toRad
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(dLon / 2) ** 2
+
+  return (
+    6371000 *
+    2 *
+    Math.atan2(
+      Math.sqrt(h),
+      Math.sqrt(Math.max(0, 1 - h))
+    )
+  )
 }
 
-function LiveTrackingPage() {
-  const { vehicles, connectionStatus } = useLiveVehicles()
-  const { location, status: locationStatus, startWatching } = useUserLocation()
-  const [corridorFilter, setCorridorFilter] = useState('all')
-  const [now, setNow] = useState(0)
-  const filteredVehicles = corridorFilter === 'all'
-    ? vehicles
-    : vehicles.filter((vehicle) => vehicle.corridor_id === Number(corridorFilter))
-  const liveCount = filteredVehicles.filter((vehicle) => isVehicleFresh(vehicle.updated_at, now)).length
-  const nearestVehicle = location
-    ? filteredVehicles
-      .map((vehicle) => ({ vehicle, distance: distanceInMeters(location, vehicle) }))
-      .sort((first, second) => first.distance - second.distance)[0]
-    : null
+// ==========================================
+// BUILD ROUTE
+// ==========================================
+
+function buildTrack(positions) {
+  if (!positions || positions.length < 2) {
+    return null
+  }
+
+  const cumulative = [0]
+
+  for (let i = 1; i < positions.length; i++) {
+    const distance = distanceMeters(
+      positions[i - 1],
+      positions[i]
+    )
+
+    cumulative.push(
+      cumulative[i - 1] + distance
+    )
+  }
+
+  return {
+    positions,
+    cumulative,
+    total: cumulative[cumulative.length - 1],
+  }
+}
+
+// ==========================================
+// POSITION INTERPOLATION
+// ==========================================
+
+function positionAt(track, distance) {
+  if (!track) return DEFAULT_CENTER
+
+  if (track.total <= 0) {
+    return track.positions[0]
+  }
+
+  const target = Math.max(
+    0,
+    Math.min(distance, track.total)
+  )
+
+  let low = 0
+  let high = track.cumulative.length - 1
+
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+
+    if (track.cumulative[mid] < target) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+
+  const index = Math.max(1, low)
+
+  const startDistance = track.cumulative[index - 1]
+  const endDistance = track.cumulative[index]
+
+  const segmentLength = endDistance - startDistance
+
+  const ratio =
+    segmentLength > 0
+      ? (target - startDistance) / segmentLength
+      : 0
+
+  const a = track.positions[index - 1]
+  const b = track.positions[index]
+
+  return [
+    a[0] + (b[0] - a[0]) * ratio,
+    a[1] + (b[1] - a[1]) * ratio,
+  ]
+}
+
+// ==========================================
+// PROJECT STOP ON ROUTE
+// ==========================================
+
+function locateStop(track, position) {
+  if (!track || !position) return 0
+
+  const latScale = 111320
+  const lngScale =
+    111320 * Math.cos(position[0] * Math.PI / 180)
+
+  let bestDistance = Infinity
+  let result = 0
+
+  for (let i = 1; i < track.positions.length; i++) {
+    const a = track.positions[i - 1]
+    const b = track.positions[i]
+
+    const ax = a[1] * lngScale
+    const ay = a[0] * latScale
+
+    const bx = b[1] * lngScale
+    const by = b[0] * latScale
+
+    const px = position[1] * lngScale
+    const py = position[0] * latScale
+
+    const dx = bx - ax
+    const dy = by - ay
+
+    const lengthSquared = dx * dx + dy * dy
+
+    const ratio = lengthSquared
+      ? Math.max(
+          0,
+          Math.min(
+            1,
+            ((px - ax) * dx + (py - ay) * dy) /
+              lengthSquared
+          )
+        )
+      : 0
+
+    const x = ax + ratio * dx
+    const y = ay + ratio * dy
+
+    const squared =
+      (px - x) ** 2 + (py - y) ** 2
+
+    if (squared < bestDistance) {
+      bestDistance = squared
+
+      result =
+        track.cumulative[i - 1] +
+        ratio *
+          (
+            track.cumulative[i] -
+            track.cumulative[i - 1]
+          )
+    }
+  }
+
+  return result
+}
+
+// ==========================================
+// RANDOM INITIAL BUS POSITIONS
+// ==========================================
+
+function createVehicles() {
+  return Array.from(
+    { length: BUS_COUNT },
+    (_, index) => ({
+      id: index + 1,
+
+      // Berbeda untuk setiap bus.
+      // Posisi awal acak sepanjang jalur.
+      phase: 0.12 + Math.random() * 1.7,
+
+      // Kecepatan asumsi masing-masing bus.
+      speedKmh: 19 + Math.random() * 9,
+    })
+  )
+}
+
+// ==========================================
+// BUS MOVEMENT
+// ==========================================
+
+function calculateVehicle(
+  vehicle,
+  track,
+  elapsedSeconds
+) {
+  if (!track || track.total <= 0) return null
+
+  const speedMps = vehicle.speedKmh / 3.6
+
+  const movement =
+    (
+      elapsedSeconds *
+      speedMps *
+      MOVEMENT_FACTOR
+    ) / track.total
+
+  // Bus bergerak sampai terminal,
+  // lalu bergerak ke arah sebaliknya.
+  const cycle = (
+    vehicle.phase + movement
+  ) % 2
+
+  const forward = cycle <= 1
+
+  const fraction = forward
+    ? cycle
+    : 2 - cycle
+
+  const currentDistance = fraction * track.total
+
+  return {
+    ...vehicle,
+    forward,
+    currentDistance,
+    position: positionAt(
+      track,
+      currentDistance
+    ),
+  }
+}
+
+// ==========================================
+// ESTIMATE ARRIVAL
+// ==========================================
+
+function getRemainingDistance(
+  vehicle,
+  destinationDistance,
+  total
+) {
+  const current = vehicle.currentDistance
+
+  if (vehicle.forward) {
+    if (destinationDistance >= current) {
+      return destinationDistance - current
+    }
+
+    return (
+      (total - current) +
+      (total - destinationDistance)
+    )
+  }
+
+  if (destinationDistance <= current) {
+    return current - destinationDistance
+  }
+
+  return current + destinationDistance
+}
+
+// ==========================================
+// MAP CAMERA
+// ==========================================
+
+function FitRoute({ positions }) {
+  const map = useMap()
 
   useEffect(() => {
-    const initialTimerId = window.setTimeout(() => setNow(Date.now()), 0)
-    const timerId = window.setInterval(() => setNow(Date.now()), 30_000)
+    if (positions.length < 2) return
+
+    map.fitBounds(positions, {
+      padding: [30, 30],
+      animate: false,
+    })
+  }, [map, positions])
+
+  return null
+}
+
+// ==========================================
+// MAIN PAGE
+// ==========================================
+
+function LiveTrackingPage() {
+  const initialCorridor = Number(corridors[0]?.id || 1)
+
+  const [corridorId, setCorridorId] = useState(
+    initialCorridor
+  )
+
+  const [targetId, setTargetId] = useState('')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  const [vehicleSeeds, setVehicleSeeds] = useState(
+    createVehicles
+  )
+
+  const routing = useRoadRoutes(
+    String(corridorId)
+  ) || {}
+
+  const roadRoutes = routing.roadRoutes || {}
+  const status = routing.status || 'idle'
+
+  const corridor = corridors.find(
+    (item) => Number(item.id) === corridorId
+  )
+
+  const selectedPath = corridorPaths.find(
+    (path) => Number(path.corridorId) === corridorId
+  )
+
+  const pointIds = selectedPath?.pointIds || []
+
+  const roadRoute =
+    roadRoutes[corridorId] ||
+    roadRoutes[String(corridorId)]
+
+  // ==========================================
+  // ROUTE GEOMETRY
+  // ==========================================
+
+  const hasRoadRoute = Boolean(
+    roadRoute?.positions?.length >= 2
+  )
+
+  const routePositions = useMemo(() => {
+    if (roadRoute?.positions?.length >= 2) {
+      return roadRoute.positions
+    }
+
+    return (selectedPath?.pointIds || [])
+      .map((id) => pointById[id]?.position)
+      .filter(
+        (position) =>
+          Array.isArray(position) &&
+          position.length === 2 &&
+          position.every(Number.isFinite)
+      )
+  }, [roadRoute, selectedPath])
+
+  const track = useMemo(
+    () => buildTrack(routePositions),
+    [routePositions]
+  )
+
+  // ==========================================
+  // STOPS
+  // ==========================================
+
+  const stops = useMemo(() => {
+    if (!track || !selectedPath) return []
+
+    return selectedPath.pointIds
+      .map((id) => pointById[id])
+      .filter(
+        (point) =>
+          point &&
+          Array.isArray(point.position)
+      )
+      .map((point) => ({
+        ...point,
+        routeDistance: locateStop(
+          track,
+          point.position
+        ),
+      }))
+      .sort(
+        (a, b) =>
+          a.routeDistance - b.routeDistance
+      )
+  }, [track, selectedPath])
+
+  // ==========================================
+  // AUTOMATIC MOVEMENT
+  // ==========================================
+
+  useEffect(() => {
+    let previous = performance.now()
+
+    const interval = window.setInterval(() => {
+      const now = performance.now()
+
+      const delta = Math.min(
+        (now - previous) / 1000,
+        0.4
+      )
+
+      previous = now
+
+      // Tidak mempercepat perjalanan secara
+      // tiba-tiba saat tab tidak aktif.
+      if (document.hidden) return
+
+      setElapsedSeconds(
+        (seconds) => seconds + delta
+      )
+    }, UPDATE_MS)
+
     return () => {
-      window.clearTimeout(initialTimerId)
-      window.clearInterval(timerId)
+      window.clearInterval(interval)
     }
   }, [])
 
-  const statusColor = connectionStatus === 'connected'
-    ? 'bg-emerald-100 text-emerald-800'
-    : connectionStatus === 'error' || connectionStatus === 'closed'
-      ? 'bg-rose-100 text-rose-800'
-      : 'bg-amber-100 text-amber-800'
+  // ==========================================
+  // ALL BUS POSITIONS
+  // ==========================================
+
+  const vehicles = useMemo(() => {
+    if (!track) return []
+
+    return vehicleSeeds
+      .map((vehicle) =>
+        calculateVehicle(
+          vehicle,
+          track,
+          elapsedSeconds
+        )
+      )
+      .filter(Boolean)
+  }, [track, vehicleSeeds, elapsedSeconds])
+
+  // ==========================================
+  // SELECTED STOP
+  // ==========================================
+
+  const selectedStop =
+    stops.find((stop) => stop.id === targetId) ||
+    stops[stops.length - 1]
+
+  // ==========================================
+  // NEAREST ARRIVING BUS
+  // ==========================================
+
+  const arrivalOptions =
+    track && selectedStop
+      ? vehicles.map((vehicle) => {
+          const remaining = getRemainingDistance(
+            vehicle,
+            selectedStop.routeDistance,
+            track.total
+          )
+
+          const etaSeconds =
+            remaining / (vehicle.speedKmh / 3.6)
+
+          return {
+            ...vehicle,
+            remaining,
+            etaSeconds,
+          }
+        })
+      : []
+
+  const nearestBus = [...arrivalOptions].sort(
+    (a, b) => a.etaSeconds - b.etaSeconds
+  )[0]
+
+  const etaMinutes = nearestBus
+    ? Math.ceil(nearestBus.etaSeconds / 60)
+    : null
+
+  const etaText =
+    etaMinutes === null
+      ? '—'
+      : etaMinutes < 1
+        ? 'Segera tiba'
+        : `± ${etaMinutes} menit`
+
+  // ==========================================
+  // CORRIDOR CHANGE
+  // ==========================================
+
+  function changeCorridor(event) {
+    const id = Number(event.target.value)
+
+    setCorridorId(id)
+    setTargetId('')
+    setVehicleSeeds(createVehicles())
+    setElapsedSeconds(0)
+  }
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
-    <div>
-      <PageHeader title="Bus Terdekat" subtitle="Posisi armada Trans Metro Dewata" />
-      <div className="space-y-4 px-5 py-5">
-        <section className="flex items-center justify-between gap-3 rounded-lg border border-rose-100 bg-gradient-to-r from-rose-50 to-orange-50 p-4">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-white text-rose-600"><BusFront size={20} /></span>
-            <div>
-              <p className="text-lg font-bold tabular-nums text-rose-700">{liveCount} <span className="text-sm font-medium text-slate-700">bus live</span></p>
-              <p className="text-xs text-slate-600">{filteredVehicles.length} posisi diterima</p>
-            </div>
-          </div>
-          <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusColor}`}>
-            {connectionStatus === 'connected' ? <Wifi size={13} /> : connectionStatus === 'error' || connectionStatus === 'closed' ? <WifiOff size={13} /> : <RefreshCw size={13} className={connectionStatus === 'connecting' ? 'animate-spin' : ''} />}
-            {statusLabels[connectionStatus]}
-          </span>
-        </section>
+    <div className="min-h-dvh bg-[var(--tmd-background,#F3F7F5)] text-[var(--tmd-text,#101827)]">
 
-        <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm">
-          <Radio size={17} className="shrink-0 text-blue-700" />
-          <span className="sr-only">Filter koridor</span>
-          <select value={corridorFilter} onChange={(event) => setCorridorFilter(event.target.value)} className="w-full bg-transparent font-medium outline-none">
-            <option value="all">Semua koridor</option>
-            {corridors.map((corridor) => <option key={corridor.id} value={corridor.id}>Koridor {corridor.id} · {corridor.from} - {corridor.to}</option>)}
-          </select>
-        </label>
+      <PageHeader
+        title="Bus Live"
+        subtitle="Posisi armada dan estimasi kedatangan"
+      />
 
-        <div className="relative h-[55vh] min-h-80 overflow-hidden rounded-lg border border-slate-200 bg-sky-50">
-          <VehicleMap vehicles={filteredVehicles} now={now} userLocation={location} />
-          {filteredVehicles.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-4 top-4 z-[500] mx-auto max-w-sm rounded-lg border border-slate-200 bg-white/95 p-3 text-center shadow-sm backdrop-blur">
-              <p className="text-sm font-semibold text-slate-800">Belum ada posisi bus untuk ditampilkan</p>
-              <p className="mt-1 text-xs text-slate-500">{isSupabaseConfigured ? connectionStatus === 'connected' ? 'Menunggu koordinat GPS dari armada.' : 'Menyambungkan feed posisi armada.' : 'Feed GPS armada belum tersambung.'}</p>
-            </div>
-          )}
-          <button type="button" onClick={startWatching} disabled={locationStatus === 'locating' || locationStatus === 'located'} className="absolute bottom-4 right-4 z-[500] flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-rose-700 shadow-md transition hover:bg-rose-50 disabled:cursor-default disabled:text-emerald-700">
-            {locationStatus === 'located' ? <MapPin size={17} /> : <LocateFixed size={17} />}
-            {locationStatus === 'located' ? 'Lokasi aktif' : locationStatus === 'locating' ? 'Mencari lokasi...' : 'Gunakan lokasi saya'}
-          </button>
+      <div className="space-y-4 px-5 pb-10 pt-5">
+
+        {/* HEADER */}
+        <div>
+          <h2 className="text-[17px] font-bold">
+            Pantau Bus
+          </h2>
+
+          <p className="mt-1 text-[11px] text-[var(--tmd-muted,#64756F)]">
+            Lihat posisi bus di sepanjang koridor
+          </p>
         </div>
 
-        {locationStatus === 'denied' && <p role="status" className="flex items-center gap-2 text-xs text-rose-700"><AlertCircle size={15} />Izin lokasi ditolak. Aktifkan izin lokasi browser untuk mencari bus terdekat.</p>}
-        {locationStatus === 'unsupported' && <p role="status" className="text-xs text-amber-800">Browser ini belum mendukung akses lokasi.</p>}
-        {locationStatus === 'error' && <p role="status" className="text-xs text-amber-800">Lokasi belum berhasil didapatkan. Coba lagi di area dengan sinyal GPS yang lebih baik.</p>}
+        {/* CORRIDOR SELECT */}
+        <section className="rounded-xl border border-[var(--tmd-border,#E1EAE5)] bg-white px-4 py-3">
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600"><MapPin size={18} /></span>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold">Bus terdekat</h2>
-              {!location && <p className="mt-1 text-xs leading-5 text-slate-500">Izinkan lokasi untuk menghitung jarak ke armada aktif di sekitarmu.</p>}
-              {location && !nearestVehicle && <p className="mt-1 text-xs leading-5 text-slate-500">Belum ada armada pada koridor yang dipilih.</p>}
-              {nearestVehicle && (
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
-                  <strong className="text-slate-800">Bus {nearestVehicle.vehicle.vehicle_id}</strong>
-                  <span>Koridor {nearestVehicle.vehicle.corridor_id}</span>
-                  <span>{nearestVehicle.distance < 1000 ? `${Math.round(nearestVehicle.distance)} m` : `${(nearestVehicle.distance / 1000).toFixed(1)} km`}</span>
-                  <span className={`font-semibold ${isVehicleFresh(nearestVehicle.vehicle.updated_at, now) ? 'text-emerald-700' : 'text-slate-500'}`}>
-                    {isVehicleFresh(nearestVehicle.vehicle.updated_at, now) ? 'Live' : 'Posisi terakhir'}
-                  </span>
-                </div>
-              )}
+          <label
+            htmlFor="corridor-select"
+            className="block text-[10px] text-[var(--tmd-muted,#64756F)]"
+          >
+            Koridor
+          </label>
+
+          <select
+            id="corridor-select"
+            value={corridorId}
+            onChange={changeCorridor}
+            className="mt-1 w-full bg-transparent text-[13px] font-semibold outline-none"
+          >
+            {corridors.map((item) => (
+              <option
+                key={item.id}
+                value={item.id}
+              >
+                Koridor {item.id} · {item.from} – {item.to}
+              </option>
+            ))}
+          </select>
+        </section>
+
+        {/* MAP */}
+        <section className="relative isolate z-0 h-[49vh] min-h-[350px] overflow-hidden rounded-2xl border border-[var(--tmd-border,#E1EAE5)] bg-[var(--tmd-surface-alt,#EDF3F0)]">
+
+          <MapContainer
+            center={
+              routePositions[0] ||
+              DEFAULT_CENTER
+            }
+            zoom={12}
+            zoomControl
+            scrollWheelZoom={false}
+            className="h-full w-full"
+          >
+
+            <TileLayer
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
+              maxZoom={19}
+            />
+
+            <FitRoute
+              positions={routePositions}
+            />
+
+            {/* ROUTE */}
+            {routePositions.length >= 2 && (
+              <Polyline
+                positions={routePositions}
+                pathOptions={{
+                  color: '#0B1533',
+                  weight: 5,
+                  opacity: 0.85,
+                  dashArray: hasRoadRoute
+                    ? undefined
+                    : '7 8',
+                }}
+              />
+            )}
+
+            {/* STOPS */}
+            {stops.map((stop) => (
+              <CircleMarker
+                key={stop.id}
+                center={stop.position}
+                radius={
+                  selectedStop?.id === stop.id
+                    ? 8
+                    : 5
+                }
+                pathOptions={{
+                  color: '#0B1533',
+                  fillColor:
+                    selectedStop?.id === stop.id
+                      ? '#48D5B0'
+                      : '#FFFFFF',
+                  fillOpacity: 1,
+                  weight: 2,
+                }}
+                eventHandlers={{
+                  click: () => setTargetId(stop.id),
+                }}
+              >
+                <Popup>
+                  <strong>{stop.name}</strong>
+
+                  <p>
+                    Pilih sebagai titik kedatangan
+                  </p>
+                </Popup>
+              </CircleMarker>
+            ))}
+
+            {/* ALL MOVING BUSES */}
+            {vehicles.map((vehicle) => (
+              <Marker
+                key={`${corridorId}-${vehicle.id}`}
+                position={vehicle.position}
+                icon={busIcon}
+                zIndexOffset={1000}
+              >
+                <Popup>
+                  <strong>
+                    Trans Metro Dewata
+                  </strong>
+
+                  <p>
+                    Koridor {corridorId} · Armada {vehicle.id}
+                  </p>
+
+                  <p>
+                    Arah:{' '}
+                    {vehicle.forward
+                      ? stops.at(-1)?.name
+                      : stops[0]?.name}
+                  </p>
+                </Popup>
+              </Marker>
+            ))}
+
+          </MapContainer>
+
+          {/* CORRIDOR OVERLAY */}
+          <div className="pointer-events-none absolute left-3 top-3 z-[500]">
+
+            <div className="rounded-lg bg-white px-3 py-2 shadow-sm">
+
+              <p className="text-[11px] font-bold text-[var(--tmd-primary,#0B1533)]">
+                Koridor {corridorId}
+              </p>
+
+              <p className="mt-0.5 text-[10px] text-[var(--tmd-muted,#64756F)]">
+                {vehicles.length} bus pada peta
+              </p>
             </div>
-            <Radio className="shrink-0 text-rose-500" size={17} />
           </div>
         </section>
 
-        {!isSupabaseConfigured && (
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <h2 className="text-sm font-bold text-slate-900">Feed GPS belum tersambung</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-600">Posisi live memerlukan feed resmi dari operator. Untuk melihat tracking armada sekarang, gunakan aplikasi Trans Metro Dewata.</p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-              <a href="https://play.google.com/store/apps/details?id=ngi.muchi.bali" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-700 hover:text-rose-500">
-                Google Play <ExternalLink size={13} />
-              </a>
-              <a href="https://apps.apple.com/id/app/trans-metro-dewata/id6744358191" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-700 hover:text-rose-500">
-                App Store <ExternalLink size={13} />
-              </a>
-            </div>
-          </section>
-        )}
+        {/* ROUTE STATUS */}
+        <p className="text-[10px] leading-4 text-[var(--tmd-muted,#64756F)]">
+          {hasRoadRoute
+            ? 'Jalur mengikuti jaringan jalan berdasarkan titik referensi koridor.'
+            : status === 'loading'
+              ? 'Memuat jaringan jalan...'
+              : 'Jalur berdasarkan titik referensi koridor yang tersedia.'}
+        </p>
 
-        {filteredVehicles.length > 0 && (
-          <section>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-bold">Armada terpantau</h2>
-              <span className="text-[10px] text-slate-500">Live jika diperbarui &lt; 2 menit</span>
+        {/* ARRIVAL CARD */}
+        <section className="overflow-hidden rounded-2xl border border-[var(--tmd-border,#E1EAE5)] bg-white">
+
+          <div className="p-4">
+
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-[15px] font-bold">
+                Estimasi Kedatangan
+              </h3>
+
+              <span className="rounded-md bg-[var(--tmd-primary-soft,#E9F0ED)] px-2.5 py-1 text-[10px] font-semibold text-[var(--tmd-primary,#0B1533)]">
+                Koridor {corridorId}
+              </span>
             </div>
-            <div className="space-y-2">
-              {filteredVehicles.map((vehicle) => {
-                const isLive = isVehicleFresh(vehicle.updated_at, now)
-                return (
-                  <article key={vehicle.vehicle_id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`size-2.5 rounded-full ${isLive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      <div><p className="text-sm font-semibold">Bus {vehicle.vehicle_id} · Koridor {vehicle.corridor_id}</p><p className="mt-0.5 text-[11px] text-slate-500">Pembaruan {new Date(vehicle.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p></div>
-                    </div>
-                    <span className={`text-xs font-semibold ${isLive ? 'text-emerald-700' : 'text-slate-500'}`}>{isLive ? 'Live' : 'Data lama'}</span>
-                  </article>
-                )
-              })}
+
+            <label
+              htmlFor="arrival-stop"
+              className="mt-4 block text-[11px] text-[var(--tmd-muted,#64756F)]"
+            >
+              Pilih titik pemberhentian
+            </label>
+
+            <select
+              id="arrival-stop"
+              value={selectedStop?.id || ''}
+              onChange={(event) =>
+                setTargetId(event.target.value)
+              }
+              className="mt-2 w-full rounded-lg border border-[var(--tmd-border,#E1EAE5)] bg-[var(--tmd-background,#F3F7F5)] px-3 py-3 text-[12px] font-semibold outline-none"
+            >
+              {stops.map((stop) => (
+                <option
+                  key={stop.id}
+                  value={stop.id}
+                >
+                  {stop.name}
+                </option>
+              ))}
+            </select>
+
+            {/* ETA */}
+            <div className="mt-5 border-t border-[var(--tmd-border,#E1EAE5)] pt-4">
+
+              <p className="text-[11px] text-[var(--tmd-muted,#64756F)]">
+                Perkiraan bus terdekat
+              </p>
+
+              <p className="mt-2 text-[30px] font-bold leading-none tracking-tight tabular-nums text-[var(--tmd-primary,#0B1533)]">
+                {etaText}
+              </p>
+
+              <p className="mt-2 text-[11px] text-[var(--tmd-muted,#64756F)]">
+                Menuju {selectedStop?.name || '-'}
+              </p>
+
             </div>
-          </section>
-        )}
+          </div>
+        </section>
+
+        {/* CORRIDOR DETAILS */}
+        <section className="rounded-2xl border border-[var(--tmd-border,#E1EAE5)] bg-white p-4">
+
+          <p className="text-[11px] text-[var(--tmd-muted,#64756F)]">
+            Informasi rute
+          </p>
+
+          <h3 className="mt-1 text-[14px] font-bold">
+            Koridor {corridorId}
+          </h3>
+
+          <p className="mt-2 text-[12px] leading-5 text-[var(--tmd-muted,#64756F)]">
+            {corridor?.from} – {corridor?.to}
+          </p>
+
+          <div className="mt-4 flex justify-between gap-3 border-t border-[var(--tmd-border,#E1EAE5)] pt-3">
+
+            <span className="text-[11px] text-[var(--tmd-muted,#64756F)]">
+              Jam operasional
+            </span>
+
+            <span className="text-[11px] font-semibold">
+              {corridor?.operatingHours || '-'}
+            </span>
+          </div>
+        </section>
+
+        {/* DATA DISCLOSURE */}
+        <p className="pb-3 text-[10px] leading-4 text-[var(--tmd-muted,#64756F)]">
+          Posisi armada dan ETA adalah visualisasi
+          ilustratif berdasarkan model jalur dan asumsi
+          kecepatan, bukan informasi GPS aktual.
+        </p>
       </div>
+
+      {/* CUSTOM MAP STYLE */}
+      <style>{`
+        .tmd-live-pin {
+          background: transparent;
+          border: none;
+          transition: transform 170ms linear;
+        }
+
+        .tmd-live-bus {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+
+          width: 42px;
+          height: 42px;
+
+          border: 4px solid #FFFFFF;
+          border-radius: 50%;
+
+          background: var(--tmd-primary, #0B1533);
+          color: white;
+
+          box-shadow:
+            0 4px 15px rgba(11, 21, 51, 0.20);
+        }
+
+        .tmd-live-pin:hover .tmd-live-bus {
+          background: var(--tmd-primary-hover, #172748);
+        }
+
+        .leaflet-container {
+          font-family: inherit;
+          z-index: 0;
+        }
+
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow:
+            0 3px 12px rgba(11,21,51,0.12) !important;
+        }
+
+        .leaflet-control-zoom a {
+          color: var(--tmd-primary, #0B1533) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .tmd-live-pin {
+            transition: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
