@@ -1,29 +1,135 @@
-import { ArrowUpRight, UsersRound } from 'lucide-react'
+
 import { Link } from 'react-router-dom'
 import { corridors, ridershipPeriod } from '../data/routes.js'
 
-const busiestCorridor = corridors.reduce((busiest, corridor) =>
-  corridor.passengersPerDay > busiest.passengersPerDay ? corridor : busiest,
-)
+// Ambil koridor dengan jumlah penumpang tertinggi
+const busiestCorridor = corridors.length
+  ? corridors.reduce((busiest, corridor) =>
+      Number(corridor.passengersPerDay || 0) >
+      Number(busiest.passengersPerDay || 0)
+        ? corridor
+        : busiest
+    )
+  : null
 
 function RidershipSpotlight() {
+  const period = ridershipPeriod || 'Periode tidak tersedia'
+
   return (
-    <section className="rounded-lg border border-sky-100 bg-gradient-to-br from-sky-50 via-cyan-50 to-white p-4 text-slate-900 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <section className="
+      overflow-hidden
+      rounded-2xl
+      border border-[var(--tmd-border)]
+      bg-[var(--tmd-surface)]
+      px-4 py-4
+      shadow-[0_2px_10px_rgba(11,21,51,0.035)]
+    ">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between gap-3">
+
         <div>
-          <p className="text-xs font-semibold text-blue-700">DATA LAYANAN · {ridershipPeriod.toUpperCase()}</p>
-          <h2 className="mt-2 text-lg font-bold">Koridor paling ramai</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tmd-muted)]">
+            Data penumpang
+          </p>
+
+          <p className="mt-1 text-[11px] text-[var(--tmd-muted)]">
+            {period}
+          </p>
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-cyan-100 text-blue-700"><UsersRound size={20} /></span>
+
+        <Link
+          to="/rute"
+          className="
+            shrink-0
+            text-[11px] font-semibold
+            text-[var(--tmd-primary)]
+            transition-opacity
+            hover:opacity-70
+          "
+        >
+          Semua koridor →
+        </Link>
+
       </div>
-      <div className="mt-4 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-3xl font-bold tabular-nums text-blue-800">{busiestCorridor.passengersPerDay.toLocaleString('id-ID')}</p>
-          <p className="mt-1 text-xs text-slate-600">penumpang rata-rata per hari · Koridor {busiestCorridor.id}</p>
+
+      {busiestCorridor ? (
+        <>
+          {/* TITLE */}
+          <h2 className="
+            mt-4
+            text-[15px] font-bold
+            leading-snug
+            tracking-tight
+            text-[var(--tmd-text)]
+          ">
+            Koridor dengan penumpang terbanyak
+          </h2>
+
+          {/* MAIN DATA */}
+          <div className="mt-4 flex items-center justify-between gap-3">
+
+            <div className="min-w-0">
+
+              <p className="
+                text-[34px] font-bold
+                leading-none tracking-tight
+                tabular-nums
+                text-[var(--tmd-primary)]
+              ">
+                {Number(
+                  busiestCorridor.passengersPerDay
+                ).toLocaleString('id-ID')}
+              </p>
+
+              <p className="mt-2 text-[11px] text-[var(--tmd-muted)]">
+                Rata-rata penumpang per hari
+              </p>
+
+            </div>
+
+            {/* CORRIDOR LABEL */}
+            <div className="
+              shrink-0 rounded-xl
+              bg-[var(--tmd-primary-soft)]
+              px-4 py-3
+              text-center
+            ">
+              <p className="text-[9px] font-medium uppercase tracking-wider text-[var(--tmd-muted)]">
+                Koridor
+              </p>
+
+              <p className="mt-1 text-xl font-bold text-[var(--tmd-primary)]">
+                {String(busiestCorridor.id).padStart(2, '0')}
+              </p>
+            </div>
+
+          </div>
+
+          {/* SOURCE */}
+          <div className="
+            mt-4 border-t
+            border-[var(--tmd-border)]
+            pt-3
+          ">
+            <p className="text-[9px] leading-4 text-[var(--tmd-muted)]">
+              Sumber: data penumpang harian Trans Metro Dewata,
+              Dishub Provinsi Bali, {period}.
+            </p>
+          </div>
+        </>
+      ) : (
+        <div className="py-6">
+          <p className="text-sm font-semibold text-[var(--tmd-text)]">
+            Data belum tersedia
+          </p>
+
+          <p className="mt-1 text-xs text-[var(--tmd-muted)]">
+            Informasi penumpang akan ditampilkan setelah data tersedia.
+          </p>
         </div>
-        <Link to="/rute" aria-label="Lihat analisis koridor" className="mb-1 grid size-9 place-items-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700"><ArrowUpRight size={18} /></Link>
-      </div>
-      <p className="mt-3 border-t border-sky-100 pt-3 text-[10px] leading-4 text-slate-500">Sumber: data penumpang harian Trans Metro Dewata, Dishub Provinsi Bali, Juni 2026.</p>
+      )}
+
     </section>
   )
 }

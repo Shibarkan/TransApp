@@ -1,24 +1,64 @@
-import { BusFront, CircleUserRound, Mail } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { CircleUserRound, Ticket } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function WelcomeHeader() {
   return (
-    <header className="bg-gradient-to-br from-sky-300 via-cyan-200 to-emerald-200 px-5 pb-16 pt-8 text-slate-950">
+    <header className="bg-[var(--tmd-background)] px-5 pt-6 pb-4">
+      {/* APP BAR */}
       <div className="flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="Trans Metro Dewata beranda">
-          <span className="grid size-10 place-items-center rounded-full bg-white/70 text-blue-700"><BusFront size={22} /></span>
-          <span className="text-sm font-bold">TRANS METRO<br />DEWATA</span>
+        <Link to="/" className="text-[13px] font-bold text-[var(--tmd-text)]">
+          TRANS METRO DEWATA
         </Link>
-        <div className="flex items-center gap-2">
-          <Link to="/tiket" title="Tiket saya" aria-label="Tiket saya" className="grid size-10 place-items-center rounded-full border border-white/70 bg-white/70 text-blue-800 transition hover:bg-white"><Mail size={19} /></Link>
-          <Link to="/akun" title="Akun" aria-label="Akun" className="grid size-10 place-items-center rounded-full border border-white/70 bg-white/70 text-blue-800 transition hover:bg-white"><CircleUserRound size={20} /></Link>
+
+        <div className="flex items-center gap-3">
+          <Link to="/tiket" aria-label="Tiket saya">
+            <Ticket size={20} className="text-[var(--tmd-text)]" />
+          </Link>
+
+          <Link to="/akun" aria-label="Akun saya">
+            <CircleUserRound size={21} className="text-[var(--tmd-text)]" />
+          </Link>
         </div>
       </div>
-      <p className="mt-7 text-sm text-slate-700">Selamat datang, jelajahi Bali</p>
-      <h1 className="mt-1 text-[25px] font-bold leading-tight">Perjalanan lebih dekat.</h1>
-      <p className="mt-2 max-w-xs text-sm leading-5 text-slate-700">Cari koridor, cek jam layanan, dan rencanakan perjalananmu.</p>
+
+      {/* GREETING */}
+      <p className="mt-6 text-sm font-medium text-[var(--tmd-muted)]">
+        Selamat datang, User!
+      </p>
+
+      {/* SIMPLE INFORMATION BANNER */}
+      <Link
+        to="/info"
+        className="
+          mt-3 flex h-[112px] overflow-hidden
+          rounded-xl border border-[var(--tmd-border)]
+          bg-white transition active:scale-[0.99]
+        "
+      >
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-3">
+          <h1 className="text-[15px] font-bold text-[var(--tmd-text)]">
+            Panduan perjalanan
+          </h1>
+
+          <p className="text-[10px] leading-4 text-[var(--tmd-muted)]">
+            Tarif, jadwal, dan informasi layanan bus.
+          </p>
+
+          <span className="text-[11px] font-semibold text-[var(--tmd-primary)]">
+            Lihat panduan
+          </span>
+        </div>
+
+        <div className="w-[42%] shrink-0 overflow-hidden">
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/6/63/Trans_Metro_Dewata_%28TB-V-07%29_Citouro_New_Armada.jpg"
+            alt="Bus Trans Metro Dewata"
+            className="h-full w-full object-cover object-center"
+          />
+        </div>
+      </Link>
     </header>
-  )
+  );
 }
 
-export default WelcomeHeader
+export default WelcomeHeader;

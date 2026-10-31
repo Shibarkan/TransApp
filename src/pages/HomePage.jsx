@@ -10,6 +10,7 @@ function HomePage() {
     <div>
       <WelcomeHeader />
       <QuickActions />
+
       <div className="space-y-7 px-5 pb-7 pt-6">
         <CorridorScroller />
         <RidershipSpotlight />

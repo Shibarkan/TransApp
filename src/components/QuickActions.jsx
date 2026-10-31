@@ -1,28 +1,107 @@
-import { ArrowRight, Bookmark, BusFront, LocateFixed, MapPinned } from 'lucide-react'
+import {
+  ArrowRight,
+  Bookmark,
+  BusFront,
+  LocateFixed,
+  MapPinned,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { standardFare } from '../data/routes.js'
 
 const actions = [
-  { label: 'Rute & jadwal', detail: 'Pilih koridor', to: '/pesan', Icon: BusFront, color: 'bg-blue-50 text-blue-700' },
-  { label: 'Bus live', detail: 'Posisi armada', to: '/tracking', Icon: LocateFixed, color: 'bg-emerald-50 text-emerald-700' },
-  { label: 'Peta koridor', detail: 'Lihat jaringan', to: '/rute', Icon: MapPinned, color: 'bg-cyan-50 text-cyan-700' },
-  { label: 'Rute favorit', detail: 'Tersimpan di sini', to: '/tiket', Icon: Bookmark, color: 'bg-amber-50 text-amber-700' },
+  {
+    label: 'Rute & jadwal',
+    detail: 'Pilih koridor',
+    to: '/pesan',
+    Icon: BusFront,
+    iconBg: 'bg-[var(--tmd-primary-soft,#EAF4FF)]',
+    iconText: 'text-[var(--tmd-primary,#1769AA)]',
+  },
+  {
+    label: 'Bus live',
+    detail: 'Posisi armada',
+    to: '/tracking',
+    Icon: LocateFixed,
+    iconBg: 'bg-teal-50',
+    iconText: 'text-teal-700',
+  },
+  {
+    label: 'Peta koridor',
+    detail: 'Lihat jaringan',
+    to: '/rute',
+    Icon: MapPinned,
+    iconBg: 'bg-cyan-50',
+    iconText: 'text-cyan-700',
+  },
+  {
+    label: 'Rute favorit',
+    detail: 'Tersimpan di sini',
+    to: '/tiket',
+    Icon: Bookmark,
+    iconBg: 'bg-amber-50',
+    iconText: 'text-amber-700',
+  },
 ]
 
 function QuickActions() {
   return (
-    <section className="relative -mt-9 mx-4 rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
+    <section
+      className="
+        relative -mt-5 mx-4
+        rounded-2xl border border-[var(--tmd-border,#E2E8F0)]
+        bg-white/96 p-4
+        shadow-[0_10px_24px_rgba(15,23,42,0.06)]
+        backdrop-blur
+      "
+    >
       <div className="grid grid-cols-4 divide-x divide-slate-100">
-        {actions.map(({ label, detail, to, Icon, color }) => (
-          <Link key={to} to={to} className="flex flex-col items-center gap-2 px-2 text-center">
-            <span className={`grid size-11 place-items-center rounded-full ${color}`}><Icon size={21} /></span>
-            <span className="text-xs font-semibold text-slate-800">{label}</span>
-            <span className="text-[10px] text-slate-500">{detail}</span>
+        {actions.map(({ label, detail, to, Icon, iconBg, iconText }) => (
+          <Link
+            key={to}
+            to={to}
+            className="group flex flex-col items-center gap-2 px-1 text-center"
+          >
+            <span
+              className={`
+                grid size-11 place-items-center rounded-full
+                ${iconBg} ${iconText}
+                transition-transform duration-200
+                group-hover:scale-[1.03]
+                group-active:scale-95
+              `}
+            >
+              <Icon size={20} strokeWidth={1.9} />
+            </span>
+
+            <span className="text-[11px] font-semibold leading-4 text-slate-800">
+              {label}
+            </span>
+
+            <span className="text-[10px] leading-4 text-slate-500">
+              {detail}
+            </span>
           </Link>
         ))}
       </div>
-      <Link to="/info" className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
-        <span className="flex items-center gap-2"><span className="size-2 rounded-full bg-emerald-500" /><span className="text-slate-500">Tarif reguler</span><strong className="text-slate-800">Rp4.400</strong></span>
-        <span className="flex items-center gap-1 font-semibold text-blue-700">Info <ArrowRight size={15} /></span>
+
+      <Link
+        to="/info"
+        className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-500">
+            Tarif reguler
+          </span>
+
+          <strong className="text-xs text-slate-900">
+            Rp{standardFare.toLocaleString('id-ID')}
+          </strong>
+        </div>
+
+        <span className="flex items-center gap-1 text-xs font-semibold text-[var(--tmd-primary,#1769AA)]">
+          Info
+          <ArrowRight size={14} />
+        </span>
       </Link>
     </section>
   )

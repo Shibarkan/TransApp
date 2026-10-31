@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+:root {
+  --tmd-primary: #1769AA;
+  --tmd-primary-hover: #12558B;
+  --tmd-primary-soft: #EAF4FF;
+
+  --tmd-accent: #E11D48;
+
+  --tmd-background: #F8FAFC;
+  --tmd-surface: #FFFFFF;
+
+  --tmd-text: #0F172A;
+  --tmd-muted: #64748B;
+  --tmd-border: #E2E8F0;
+}
+
+body {
+  background: var(--tmd-background);
+  color: var(--tmd-text);
+}
