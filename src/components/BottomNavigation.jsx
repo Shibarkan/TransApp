@@ -5,8 +5,8 @@ import { navItems } from '../data/navItems.js'
 function BottomNavigation() {
   const { pathname } = useLocation()
 
-  // Halaman tambahan mengikuti Koridor
-  const relatedRoutes = ['/pesan', '/tracking']
+  // Halaman operasional tetap menandai Beranda saat tidak punya tab khusus.
+  const relatedRoutes = ['/pesan', '/tracking', '/rute']
 
   const normalizedPath =
     relatedRoutes.some(

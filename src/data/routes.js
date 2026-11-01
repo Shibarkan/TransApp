@@ -1,6 +1,29 @@
 export const standardFare = 4400
 export const specialFare = 2000
 
+export const paymentMethods = [
+  {
+    id: 'cash',
+    label: 'Tunai',
+    detail: 'Bayar langsung kepada petugas.',
+  },
+  {
+    id: 'qris',
+    label: 'QRIS',
+    detail: 'Pindai QRIS (MPM) saat transaksi.',
+  },
+  {
+    id: 'emoney',
+    label: 'Kartu uang elektronik',
+    detail: 'Gunakan kartu yang didukung operator.',
+  },
+  {
+    id: 'lait',
+    label: 'LAIT / TMD Pass',
+    detail: 'Tiket digital dan pilihan masa transit.',
+  },
+]
+
 export const corridors = [
   {
     id: 1,

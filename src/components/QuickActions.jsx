@@ -1,9 +1,9 @@
 import {
   ArrowRight,
-  Bookmark,
   BusFront,
   LocateFixed,
   MapPinned,
+  Ticket,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { standardFare } from '../data/routes.js'
@@ -34,12 +34,12 @@ const actions = [
     iconText: 'text-cyan-700',
   },
   {
-    label: 'Rute favorit',
-    detail: 'Tersimpan di sini',
+    label: 'E-ticket',
+    detail: 'Tiket perjalanan',
     to: '/tiket',
-    Icon: Bookmark,
-    iconBg: 'bg-amber-50',
-    iconText: 'text-amber-700',
+    Icon: Ticket,
+    iconBg: 'bg-rose-50',
+    iconText: 'text-rose-700',
   },
 ]
 

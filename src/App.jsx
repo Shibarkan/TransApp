@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout.jsx'
 import AccountPage from './pages/AccountPage.jsx'
 import BookingPage from './pages/BookingPage.jsx'
+import CheckoutPage from './pages/CheckoutPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import InfoPage from './pages/InfoPage.jsx'
 import RoutesPage from './pages/RoutesPage.jsx'
@@ -17,6 +18,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="pesan" element={<BookingPage />} />
+          <Route path="checkout" element={<CheckoutPage />} />
           <Route path="rute" element={<RoutesPage />} />
           <Route path="tracking" element={<Suspense fallback={<p role="status" className="p-6 text-sm text-slate-600">Memuat peta armada...</p>}><LiveTrackingPage /></Suspense>} />
           <Route path="tiket" element={<TicketsPage />} />

@@ -1,9 +1,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  ArrowRight,
+  MapPinned,
+  Ticket,
+  WalletCards,
+} from 'lucide-react'
 
 import PageHeader from '../components/PageHeader.jsx'
+import TransitTicketCard from '../components/TransitTicketCard.jsx'
 import { corridors } from '../data/routes.js'
+import { readPurchasedTickets } from '../lib/tickets.js'
 import { useSavedCorridors } from '../hooks/useSavedCorridors.js'
 
 function TicketsPage() {
@@ -13,6 +21,7 @@ function TicketsPage() {
   } = useSavedCorridors()
 
   const [corridorToRemove, setCorridorToRemove] = useState(null)
+  const [tickets] = useState(readPurchasedTickets)
   const cancelButtonRef = useRef(null)
 
   const routes = corridors.filter((corridor) =>
@@ -53,11 +62,93 @@ function TicketsPage() {
     <div className="min-h-dvh bg-[var(--tmd-background,#F8FAFC)]">
 
       <PageHeader
-        title="Rute Favorit"
-        subtitle="Koridor yang kamu simpan"
+        title="Tiket Saya"
+        subtitle="Tiket digital dan rute favorit"
       />
 
       <div className="space-y-5 px-5 pb-10 pt-5">
+
+        <section aria-labelledby="e-ticket-title">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 id="e-ticket-title" className="text-base font-bold text-slate-900">
+                Tiket digital
+              </h2>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Status perjalanan dan tiketmu.
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+              {tickets.length ? `${tickets.length} tiket` : 'Belum aktif'}
+            </span>
+          </div>
+
+          {tickets.length ? (
+            <div className="space-y-3">
+              {tickets.map((ticket) => <TransitTicketCard key={ticket.id} ticket={ticket} />)}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-[var(--tmd-border,#E2E8F0)] bg-white">
+              <div className="flex items-start gap-3 p-4">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--tmd-primary-soft,#EAF4FF)] text-[var(--tmd-primary,#1769AA)]">
+                  <Ticket size={20} aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold text-slate-900">Belum ada tiket aktif</h3>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                    Pilih perjalanan dan selesaikan checkout untuk menyimpan tiketmu di sini.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t border-slate-100 p-3">
+                <Link to="/pesan" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[var(--tmd-primary,#1769AA)] px-3 text-[11px] font-semibold text-white transition hover:brightness-90">
+                  <MapPinned size={14} aria-hidden="true" />
+                  Cari perjalanan
+                </Link>
+                <Link to="/info#metode-pembayaran" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <WalletCards size={14} aria-hidden="true" />
+                  Cara pembayaran
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="travel-flow-title">
+          <div className="mb-3">
+            <h2 id="travel-flow-title" className="text-base font-bold text-slate-900">
+              Alur perjalanan
+            </h2>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Dari memilih rute sampai naik bus.
+            </p>
+          </div>
+
+          <ol className="divide-y divide-slate-100 rounded-xl border border-[var(--tmd-border,#E2E8F0)] bg-white px-4">
+            <li className="flex gap-3 py-3.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--tmd-primary-soft,#EAF4FF)] text-[11px] font-bold text-[var(--tmd-primary,#1769AA)]">1</span>
+              <div>
+                <h3 className="text-xs font-semibold text-slate-800">Cari rute perjalanan</h3>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">Tentukan asal dan tujuan untuk melihat pilihan koridor.</p>
+              </div>
+            </li>
+            <li className="flex gap-3 py-3.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--tmd-primary-soft,#EAF4FF)] text-[11px] font-bold text-[var(--tmd-primary,#1769AA)]">2</span>
+              <div>
+                <h3 className="text-xs font-semibold text-slate-800">Cek tarif dan pembayaran</h3>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">Pilih metode yang tersedia dan perhatikan ketentuan transit.</p>
+              </div>
+            </li>
+            <li className="flex gap-3 py-3.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--tmd-primary-soft,#EAF4FF)] text-[11px] font-bold text-[var(--tmd-primary,#1769AA)]">3</span>
+              <div>
+                <h3 className="text-xs font-semibold text-slate-800">Bayar lalu ikuti arahan petugas</h3>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">Pembayaran dilakukan melalui metode yang diterima operator saat naik.</p>
+              </div>
+            </li>
+          </ol>
+        </section>
 
         {routes.length === 0 ? (
           <section className="flex min-h-[230px] flex-col items-center justify-center rounded-xl border border-[var(--tmd-border,#E2E8F0)] bg-white px-6 py-8 text-center">
@@ -165,9 +256,10 @@ function TicketsPage() {
 
             <Link
               to="/rute"
-              className="block rounded-xl border border-dashed border-[var(--tmd-border,#E2E8F0)] py-4 text-center text-xs font-semibold text-[var(--tmd-primary,#1769AA)]"
+              className="flex min-h-12 items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--tmd-border,#E2E8F0)] py-3 text-center text-xs font-semibold text-[var(--tmd-primary,#1769AA)]"
             >
               Tambah koridor favorit
+              <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </>
         )}

@@ -1,10 +1,12 @@
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Banknote, ChevronLeft, ChevronRight, CreditCard, QrCode, Ticket } from 'lucide-react'
 
 import PageHeader from '../components/PageHeader.jsx'
 import {
   corridors,
+  paymentMethods,
   standardFare,
   specialFare,
   fareNote,
@@ -17,6 +19,13 @@ import {
 
 const rupiah = (value) =>
   `Rp${Number(value).toLocaleString('id-ID')}`
+
+const paymentIcons = {
+  cash: Banknote,
+  qris: QrCode,
+  emoney: CreditCard,
+  lait: Ticket,
+}
 
 // ==========================================
 // PANDUAN PERJALANAN
@@ -144,8 +153,22 @@ function Accordion({ title, children }) {
 
 function InfoPage() {
   const [activeStep, setActiveStep] = useState(0)
+  const [activePaymentIndex, setActivePaymentIndex] = useState(0)
+  const paymentRailRef = useRef(null)
 
   const selectedGuide = guideSteps[activeStep]
+  const activePayment = paymentMethods[activePaymentIndex]
+
+  function selectPayment(index) {
+    const rail = paymentRailRef.current
+    if (!rail) return
+
+    rail.scrollTo({
+      left: index * rail.clientWidth,
+      behavior: 'smooth',
+    })
+    setActivePaymentIndex(index)
+  }
 
   return (
     <div className="min-h-dvh bg-[var(--tmd-background,#F8FAFC)] text-[var(--tmd-text,#0F172A)]">
@@ -269,6 +292,104 @@ function InfoPage() {
             1 Mei 2026. Tarif dapat berubah sesuai
             ketentuan operator.
           </p>
+
+          <div id="metode-pembayaran" className="mt-5 scroll-mt-5">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-[15px] font-bold tracking-tight text-[var(--tmd-text,#0F172A)]">
+                  Metode pembayaran
+                </h2>
+                <p className="mt-1 text-[11px] leading-5 text-[var(--tmd-muted,#64748B)]">
+                  Geser untuk melihat 4 pilihan pembayaran.
+                </p>
+              </div>
+
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => selectPayment(Math.max(0, activePaymentIndex - 1))}
+                  disabled={activePaymentIndex === 0}
+                  aria-label="Metode pembayaran sebelumnya"
+                  className="grid size-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <ChevronLeft size={17} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPayment(Math.min(paymentMethods.length - 1, activePaymentIndex + 1))}
+                  disabled={activePaymentIndex === paymentMethods.length - 1}
+                  aria-label="Metode pembayaran berikutnya"
+                  className="grid size-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <ChevronRight size={17} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              ref={paymentRailRef}
+              onScroll={(event) => {
+                const rail = event.currentTarget
+                const nextIndex = Math.round(rail.scrollLeft / rail.clientWidth)
+                setActivePaymentIndex((current) => current === nextIndex ? current : nextIndex)
+              }}
+              className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth rounded-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="region"
+              aria-label="Pilihan metode pembayaran"
+            >
+              {paymentMethods.map((method) => {
+                const Icon = paymentIcons[method.id]
+
+                return (
+                  <article
+                    key={method.id}
+                    className="min-w-full snap-center rounded-xl border border-[var(--tmd-border,#E2E8F0)] bg-white p-4"
+                    aria-label={method.label}
+                  >
+                    <div className="flex min-h-[116px] items-center gap-4">
+                      <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[var(--tmd-primary-soft,#EAF4FF)] text-[var(--tmd-primary,#1769AA)]">
+                        <Icon size={25} strokeWidth={1.8} aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--tmd-primary,#1769AA)]">
+                          Metode {paymentMethods.indexOf(method) + 1}
+                        </p>
+                        <h3 className="mt-1 text-sm font-bold text-slate-900">
+                          {method.label}
+                        </h3>
+                        <p className="mt-1.5 text-[11px] leading-5 text-slate-600">
+                          {method.detail}
+                        </p>
+                      </div>
+                    </div>
+                    {method.id === 'qris' && (
+                      <p className="mt-3 border-t border-slate-100 pt-3 text-[10px] leading-4 text-slate-500">
+                        Transit antarkoridor gratis, kecuali menggunakan QRIS Scan (MPM).
+                      </p>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-1.5" role="group" aria-label="Pilih metode pembayaran">
+                {paymentMethods.map((method, index) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => selectPayment(index)}
+                    aria-label={`Lihat ${method.label}`}
+                    aria-current={activePaymentIndex === index ? 'true' : undefined}
+                    className={`h-1.5 rounded-full transition-all ${activePaymentIndex === index ? 'w-6 bg-[var(--tmd-primary,#1769AA)]' : 'w-1.5 bg-slate-300'}`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] font-medium tabular-nums text-slate-500" aria-live="polite">
+                {activePaymentIndex + 1} / {paymentMethods.length} · {activePayment.label}
+              </span>
+            </div>
+          </div>
         </section>
 
         {/* ==================================

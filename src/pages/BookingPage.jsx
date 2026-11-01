@@ -5,6 +5,7 @@ import {
   ArrowRight,
   LoaderCircle,
   Search,
+  Ticket,
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -153,6 +154,25 @@ function RouteCard({ journey, index }) {
           LAIT, kecuali menggunakan QRIS Scan (MPM).
         </div>
       )}
+
+      <div className="border-t border-[var(--tmd-border,#E2E8F0)] p-3">
+        <Link
+          to="/checkout"
+          state={{
+            origin: pointById[journey.segments[0].fromPointId]?.name || journey.segments[0].fromPointId,
+            destination: pointById[journey.segments.at(-1).toPointId]?.name || journey.segments.at(-1).toPointId,
+            segments: journey.segments.map((segment) => ({
+              corridorId: segment.corridorId,
+              from: pointById[segment.fromPointId]?.name || segment.fromPointId,
+              to: pointById[segment.toPointId]?.name || segment.toPointId,
+            })),
+          }}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--tmd-primary,#1769AA)] px-4 text-xs font-bold text-white transition hover:brightness-90"
+        >
+          <Ticket size={15} aria-hidden="true" />
+          Lanjut ke checkout
+        </Link>
+      </div>
 
     </article>
   )
