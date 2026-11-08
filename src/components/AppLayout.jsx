@@ -35,9 +35,9 @@ function AppLayout() {
 
   return (
     <LazyMotion features={domAnimation}>
-      <div className="min-h-dvh bg-[var(--tmd-background,#F3F7F5)] text-[var(--tmd-text,#101827)]">
+      <div className="min-h-dvh text-[var(--tmd-text,#231A1C)]">
 
-        <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-[var(--tmd-surface,#FFFFFF)] shadow-sm">
+        <div className="app-shell mx-auto flex min-h-dvh max-w-[480px] flex-col shadow-sm">
 
           <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))]">
             <Outlet />

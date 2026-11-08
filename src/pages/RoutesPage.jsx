@@ -55,7 +55,7 @@ function RoutesPage() {
           </div>
           <div className="-mx-5 flex snap-x gap-1 overflow-x-auto px-5 pb-1 [scrollbar-width:none]" role="tablist" aria-label="Jenis peta">
             {mapTabs.map((tab) => (
-              <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => selectTab(tab.id)} className={`min-h-9 shrink-0 snap-start rounded-full border px-3 text-[11px] font-semibold transition-colors ${activeTab === tab.id ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>
+              <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => selectTab(tab.id)} className={`min-h-9 shrink-0 snap-start rounded-full border px-3 text-[11px] font-semibold transition-colors ${activeTab === tab.id ? 'border-[var(--tmd-border)] bg-[var(--tmd-primary-soft)] text-[var(--tmd-primary)]' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>
                 {tab.label}
               </button>
             ))}
@@ -69,7 +69,7 @@ function RoutesPage() {
                   {corridors.map((corridor) => <option key={corridor.id} value={corridor.id}>Koridor {corridor.id} · {corridor.from} - {corridor.to}</option>)}
                 </select>
               </label>
-              <div className="mt-3 h-[54vh] min-h-80 overflow-hidden rounded-lg border border-slate-200 bg-sky-50">
+              <div className="mt-3 h-[54vh] min-h-80 overflow-hidden rounded-lg border border-slate-200 bg-[var(--tmd-primary-soft)]">
                 <TransitNetworkMap corridorId={mapCorridorFilter} onSelectCorridor={selectMapCorridor} roadRoutes={roadRoutes} />
               </div>
               <div aria-live="polite" className={`mt-2 text-[11px] ${roadRouteStatus === 'error' || roadRouteStatus === 'partial' ? 'text-amber-700' : 'text-slate-500'}`}>
@@ -80,7 +80,7 @@ function RoutesPage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2">
                 {corridors.map((corridor) => (
-                  <button key={corridor.id} type="button" onClick={() => selectMapCorridor(String(corridor.id))} className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] ${mapCorridorFilter === String(corridor.id) ? 'bg-rose-50 font-semibold text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <button key={corridor.id} type="button" onClick={() => selectMapCorridor(String(corridor.id))} className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] ${mapCorridorFilter === String(corridor.id) ? 'bg-[var(--tmd-primary-soft)] font-semibold text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>
                     <span className="h-1 w-4 rounded-full" style={{ backgroundColor: corridor.color }} />K{corridor.id}
                   </button>
                 ))}

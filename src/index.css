@@ -1,21 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --tmd-primary: #1769AA;
-  --tmd-primary-hover: #12558B;
-  --tmd-primary-soft: #EAF4FF;
+  --tmd-primary: #CE0E2D;
+  --tmd-primary-hover: #A90D27;
+  --tmd-primary-bright: #E42949;
+  --tmd-primary-soft: #FFF0F2;
+  --tmd-primary-tint: #FCE5E9;
 
-  --tmd-accent: #E11D48;
+  --tmd-accent: #EF555A;
+  --tmd-accent-soft: #FFF0EB;
+  --tmd-rose: #D33A50;
+  --tmd-rose-soft: #FCE8EC;
+  --tmd-brick: #B91F3A;
+  --tmd-brick-soft: #F9E8ED;
+  --tmd-warm-red: #D64A36;
+  --tmd-warm-red-soft: #FFF2E9;
+  --tmd-wine: #A92846;
 
-  --tmd-background: #F8FAFC;
+  --tmd-background: #FFF9F7;
   --tmd-surface: #FFFFFF;
 
-  --tmd-text: #0F172A;
-  --tmd-muted: #64748B;
-  --tmd-border: #E2E8F0;
+  --tmd-text: #302326;
+  --tmd-muted: #806D70;
+  --tmd-border: #F1DFE1;
 }
 
 body {
-  background: var(--tmd-background);
+  background:
+    radial-gradient(ellipse at 12% 8%, rgb(239 85 90 / 9%), transparent 34rem),
+    radial-gradient(ellipse at 92% 55%, rgb(206 14 45 / 5%), transparent 30rem),
+    linear-gradient(155deg, #FFF9F7 0%, #FFFFFF 48%, #FFF3F1 100%);
   color: var(--tmd-text);
+}
+
+.app-shell {
+  background:
+    radial-gradient(ellipse at 100% 12%, rgb(239 85 90 / 6%), transparent 26rem),
+    linear-gradient(160deg, #FFF9F7 0%, #FFFFFF 48%, #FFF6F4 100%);
 }

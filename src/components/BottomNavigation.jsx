@@ -51,9 +51,9 @@ function BottomNavigation() {
       <div
         className="
           absolute inset-x-0 bottom-0 top-[23px]
-          border-t border-[var(--tmd-border,#E1EAE5)]
+          border-t border-[var(--tmd-border,#F0DEE1)]
           bg-white
-          shadow-[0_-4px_20px_rgba(11,21,51,0.05)]
+          shadow-[0_-4px_20px_rgba(35,26,28,0.06)]
         "
       />
 
@@ -104,9 +104,9 @@ function BottomNavigation() {
             items-center justify-center
             rounded-full
             border-[4px] border-white
-            bg-[var(--tmd-primary,#0B1533)]
+            bg-[var(--tmd-primary,#C8102E)]
             text-white
-            shadow-[0_5px_14px_rgba(11,21,51,0.16)]
+            shadow-[0_5px_14px_rgba(200,16,46,0.2)]
           "
         >
           {ActiveIcon && (
@@ -144,7 +144,7 @@ function BottomNavigation() {
                 outline-none
                 focus:outline-none
                 focus-visible:ring-2
-                focus-visible:ring-[var(--tmd-primary,#0B1533)]
+                focus-visible:ring-[var(--tmd-primary,#C8102E)]
                 focus-visible:ring-inset
               "
             >
@@ -155,7 +155,7 @@ function BottomNavigation() {
                   ${
                     active
                       ? 'invisible'
-                      : 'text-[var(--tmd-muted,#64756F)] group-hover:text-[var(--tmd-primary,#0B1533)]'
+                      : 'text-[var(--tmd-muted,#76666A)] group-hover:text-[var(--tmd-primary,#C8102E)]'
                   }
                 `}
               >
@@ -172,8 +172,8 @@ function BottomNavigation() {
                   transition-colors duration-200
                   ${
                     active
-                      ? 'font-bold text-[var(--tmd-primary,#0B1533)]'
-                      : 'font-medium text-[var(--tmd-muted,#64756F)]'
+                      ? 'font-bold text-[var(--tmd-primary,#C8102E)]'
+                      : 'font-medium text-[var(--tmd-muted,#76666A)]'
                   }
                 `}
               >

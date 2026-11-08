@@ -14,32 +14,32 @@ const actions = [
     detail: 'Pilih koridor',
     to: '/pesan',
     Icon: BusFront,
-    iconBg: 'bg-[var(--tmd-primary-soft,#EAF4FF)]',
-    iconText: 'text-[var(--tmd-primary,#1769AA)]',
+    iconBg: 'bg-[var(--tmd-primary-soft)]',
+    iconText: 'text-[var(--tmd-primary)]',
   },
   {
     label: 'Bus live',
     detail: 'Posisi armada',
     to: '/tracking',
     Icon: LocateFixed,
-    iconBg: 'bg-teal-50',
-    iconText: 'text-teal-700',
+    iconBg: 'bg-[var(--tmd-primary-tint)]',
+    iconText: 'text-[var(--tmd-rose)]',
   },
   {
     label: 'Peta koridor',
     detail: 'Lihat jaringan',
     to: '/rute',
     Icon: MapPinned,
-    iconBg: 'bg-cyan-50',
-    iconText: 'text-cyan-700',
+    iconBg: 'bg-[var(--tmd-accent-soft)]',
+    iconText: 'text-[var(--tmd-accent)]',
   },
   {
     label: 'E-ticket',
     detail: 'Tiket perjalanan',
     to: '/tiket',
     Icon: Ticket,
-    iconBg: 'bg-rose-50',
-    iconText: 'text-rose-700',
+    iconBg: 'bg-[var(--tmd-rose-soft)]',
+    iconText: 'text-[var(--tmd-brick)]',
   },
 ]
 
@@ -48,13 +48,13 @@ function QuickActions() {
     <section
       className="
         relative -mt-5 mx-4
-        rounded-2xl border border-[var(--tmd-border,#E2E8F0)]
+        rounded-2xl border border-[var(--tmd-border)]
         bg-white/96 p-4
-        shadow-[0_10px_24px_rgba(15,23,42,0.06)]
+        shadow-[0_10px_24px_rgba(83,38,47,0.08)]
         backdrop-blur
       "
     >
-      <div className="grid grid-cols-4 divide-x divide-slate-100">
+      <div className="grid grid-cols-4 divide-x divide-[#F3E4E5]">
         {actions.map(({ label, detail, to, Icon, iconBg, iconText }) => (
           <Link
             key={to}
@@ -86,7 +86,7 @@ function QuickActions() {
 
       <Link
         to="/info"
-        className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3"
+        className="mt-4 flex items-center justify-between gap-3 border-t border-[#F3E4E5] pt-3"
       >
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-slate-500">
@@ -98,7 +98,7 @@ function QuickActions() {
           </strong>
         </div>
 
-        <span className="flex items-center gap-1 text-xs font-semibold text-[var(--tmd-primary,#1769AA)]">
+        <span className="flex items-center gap-1 text-xs font-semibold text-[var(--tmd-primary)]">
           Info
           <ArrowRight size={14} />
         </span>

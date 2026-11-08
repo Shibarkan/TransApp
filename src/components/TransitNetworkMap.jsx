@@ -72,7 +72,7 @@ function TransitNetworkMap({ corridorId, onSelectCorridor, roadRoutes }) {
               <p className="mb-1">Pilih koridor:</p>
               <div className="flex gap-1">
                 {point.corridorIds.map((id) => (
-                  <button key={id} type="button" onClick={() => onSelectCorridor(String(id))} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">
+                  <button key={id} type="button" onClick={() => onSelectCorridor(String(id))} className="rounded border border-[var(--tmd-border)] px-2 py-1 text-xs font-semibold text-[var(--tmd-primary)]">
                     K{id}
                   </button>
                 ))}

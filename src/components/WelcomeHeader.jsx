@@ -6,7 +6,7 @@ function WelcomeHeader() {
     <header className="bg-[var(--tmd-background)] px-5 pt-6 pb-4">
       {/* APP BAR */}
       <div className="flex items-center justify-between">
-        <Link to="/" className="text-[13px] font-bold text-[var(--tmd-text)]">
+        <Link to="/" className="text-[13px] font-extrabold tracking-wide text-[var(--tmd-primary)]">
           TRANS METRO DEWATA
         </Link>
 
@@ -31,20 +31,22 @@ function WelcomeHeader() {
         to="/info"
         className="
           mt-3 flex h-[112px] overflow-hidden
-          rounded-xl border border-[var(--tmd-border)]
-          bg-white transition active:scale-[0.99]
+          rounded-xl
+          bg-gradient-to-br from-[var(--tmd-primary)] via-[var(--tmd-primary-bright)] to-[var(--tmd-accent)]
+          text-white shadow-[0_10px_24px_rgba(206,14,45,0.18)]
+          transition active:scale-[0.99]
         "
       >
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-3">
-          <h1 className="text-[15px] font-bold text-[var(--tmd-text)]">
+          <h1 className="text-[15px] font-bold text-white">
             Panduan perjalanan
           </h1>
 
-          <p className="text-[10px] leading-4 text-[var(--tmd-muted)]">
+          <p className="text-[10px] leading-4 text-white/85">
             Tarif, jadwal, dan informasi layanan bus.
           </p>
 
-          <span className="text-[11px] font-semibold text-[var(--tmd-primary)]">
+          <span className="text-[11px] font-bold text-white underline decoration-white/60 underline-offset-2">
             Lihat panduan
           </span>
         </div>
